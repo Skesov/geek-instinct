@@ -76,9 +76,23 @@ BEER 5  BURGER 2
 - **Burger**: fractional ok, but often rounded to integer
 - **Zero**: hide or show `0`
 
+## Observed Implementation (Inspiration Only)
+
+Inspiration from Instinct Mission (ID: 96317) — not our design spec:
+
+| Detail | Observed |
+|--------|----------|
+| Label | `Beers earned` |
+| Format | `0.0` (one decimal) |
+| Icon | Beer mug |
+| Position | Bottom row, near calories |
+| Adjacent data | Calories (flame icon), Pressure (arrow) |
+
+**Note:** This is reference material, not our design decision. Actual placement TBD.
+
 ## Open Questions
 
-1. Threshold: show only if > 0.5 units?
-2. Format: `5.2` vs `5` vs `5.3L`?
-3. Which burger as reference — Big Mac or average (~300)?
-4. Add other treats (ice cream, donuts)?
+1. Format: `X.X` vs `X` — one decimal or integer only?
+2. Which burger as reference — Big Mac (~550) or average (~300)?
+3. Add other treats (ice cream, donuts)?
+4. Calories metric: `ActivityMonitor.getInfo().calories` (total) vs something else?
