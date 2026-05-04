@@ -1,17 +1,17 @@
 # Watch Face Design Reference
 
-Для Garmin Instinct 2 / Instinct 2 Solar (176×176, MIP 2-color, API 3.4.0).
+For Garmin Instinct 2 / Instinct 2 Solar (176×176, MIP 2-color, API 3.4.0).
 
-## Источники
+## Sources
 
-| Референс      | URL                                      | Особенности                               |
-| ------------- | ---------------------------------------- | ----------------------------------------- |
-| geektime      | github.com/rishubil/geektime             | Data-heavy, графики HR/шагов/дыхания/SpO2 |
-| ElegantAnalog | github.com/bhugh/ElegantAnalog-Watchface | Аналоговые стрелки, Solar Clock           |
+| Reference     | URL                                      | Features                              |
+| ------------- | ---------------------------------------- | ------------------------------------- |
+| geektime      | github.com/rishubil/geektime             | Data-heavy, HR/steps/breath/SpO2 graphs |
+| ElegantAnalog | github.com/bhugh/ElegantAnalog-Watchface | Analog hands, Solar Clock             |
 
 ---
 
-## Зоны экрана (176×176)
+## Screen Zones (176×176)
 
 ```
 ┌─────────────────────────────────────┐
@@ -30,40 +30,40 @@
 
 ---
 
-## Элементы
+## Elements
 
-### 1. Время
+### 1. Time
 
-#### Цифровые форматы
+#### Digital Formats
 
-| Формат            | Пример     | Шрифт             | Notes                |
-| ----------------- | ---------- | ----------------- | -------------------- |
-| `hh:mm`           | `09:41`    | `FONT_NUMBER_HOT` | Большой, центральный |
-| `hh:mm:ss`        | `09:41:23` | `FONT_NUMBER_HOT` | Секунды мелко        |
-| `hh:mm` + `AM/PM` | `09:41 AM` | `FONT_NUMBER_HOT` | 12h mode             |
+| Format          | Example     | Font              | Notes                  |
+| --------------- | ---------- | ----------------- | ---------------------- |
+| `hh:mm`         | `09:41`    | `FONT_NUMBER_HOT` | Large, centered        |
+| `hh:mm:ss`      | `09:41:23` | `FONT_NUMBER_HOT` | Seconds smaller        |
+| `hh:mm` + `AM/PM` | `09:41 AM` | `FONT_NUMBER_HOT` | 12h mode              |
 
-#### Аналоговые стрелки
+#### Analog Hands
 
-Реализация: `drawHand()` с polygon coordinates через `generateHandCoordinates()`.
+Implementation: `drawHand()` with polygon coordinates via `generateHandCoordinates()`.
 
-**Типы стрелок** (ElegantAnalog):
+**Hand types** (ElegantAnalog):
 
-| type | Описание                  | Внешний вид               |
-| ---- | ------------------------- | ------------------------- |
-| 0    | Big Pointer               | Заполненный прямоугольник |
-| 1    | Needle                    | Тонкая линия              |
-| 2    | Triangle                  | Треугольник (обычный)     |
-| 3    | Outline Blunt             | Контур прямоугольника     |
-| 4    | Blanked Rectangle Outline | Контур с промежутком      |
-| 5    | Triangle Outline          | Контур треугольника       |
-| 6    | Blanked Triangle Outline  | Контур с промежутком      |
+| type | Description                   | Appearance               |
+| ---- | ----------------------------- | ------------------------ |
+| 0    | Big Pointer                   | Filled rectangle         |
+| 1    | Needle                        | Thin line                |
+| 2    | Triangle                      | Standard triangle        |
+| 3    | Outline Blunt                 | Rectangle outline        |
+| 4    | Blanked Rectangle Outline     | Outline with gap         |
+| 5    | Triangle Outline              | Triangle outline         |
+| 6    | Blanked Triangle Outline      | Outline with gap         |
 
-**Позиции стрелок:**
+**Hand positions:**
 
-- Центр главного циферблата: `width/2, height/2`
+- Main dial center: `width/2, height/2`
 - Inset circle: `centerX_circle, centerY_circle, radius_circle`
 
-**Формула угла** (0° = 12 часов, по часовой стрелке):
+**Angle formula** (0° = 12 o'clock, clockwise):
 
 ```monkeyc
 var hourHandAngle = (((clockTime.hour % 12) * 60) + clockTime.min);
@@ -74,26 +74,26 @@ var minuteHandAngle = (clockTime.min / 60.0) * Math.PI * 2;
 var secondHand = (clockTime.sec / 60.0) * Math.PI * 2;
 ```
 
-**Длина стрелок** (относительно экрана):
+**Hand lengths** (relative to screen):
 
 ```monkeyc
-hourHandLength   = height / 6;    // ~29px на 176
-minuteHandLength = height / 3;     // ~58px на 176
-secondHandLength = width * 0.475; // ~83px на 176
+hourHandLength   = height / 6;    // ~29px on 176 screen
+minuteHandLength = height / 3;     // ~58px on 176 screen
+secondHandLength = width * 0.475; // ~83px on 176 screen
 ```
 
-### 2. Статусные иконки
+### 2. Status Icons
 
-| Иконка         | Состояние       | Drawable                     |
+| Icon            | State        | Drawable                   |
 | -------------- | --------------- | ---------------------------- |
-| Do Not Disturb | вкл/выкл        | `DndOnIcon` / `DndOffIcon`   |
-| Connection     | вкл/выкл        | `ConnOnIcon` / `ConnOffIcon` |
-| Notification   | есть/нет        | `NotiOnIcon` / `NotiOffIcon` |
-| Battery        | зарядка/обычная | `BattOnIcon` / `BattOffIcon` |
+| Do Not Disturb | on/off        | `DndOnIcon` / `DndOffIcon`   |
+| Connection     | on/off        | `ConnOnIcon` / `ConnOffIcon` |
+| Notification   | has/none      | `NotiOnIcon` / `NotiOffIcon` |
+| Battery        | charging/normal | `BattOnIcon` / `BattOffIcon` |
 
-Размер иконок: 24×24 или 32×32 PNG в `resources/drawables/`.
+Icon sizes: 24×24 or 32×32 PNG in `resources/drawables/`.
 
-### 3. Данные активности
+### 3. Activity Data
 
 #### Heart Rate
 
@@ -101,7 +101,7 @@ secondHandLength = width * 0.475; // ~83px на 176
 var activityInfo = Activity.getActivityInfo();
 var hr = activityInfo.currentHeartRate;  // Number (bpm)
 
-// График: линия с min/max за последние 20 мин
+// Graph: line with min/max for last 20 minutes
 var hrIterator = ActivityMonitor.getHeartRateHistory(HR_GRAPH_POINT_COUNT, false);
 var hrMax = hrIterator.getMax();
 var hrMin = hrIterator.getMin();
@@ -114,7 +114,7 @@ var info = ActivityMonitor.getInfo();
 var steps = info.steps;         // Number
 var stepGoal = info.stepGoal;   // Number (default 1500)
 
-// График: bar chart дельты шагов
+// Graph: bar chart of step deltas
 ```
 
 #### Respiration Rate (Breath)
@@ -123,7 +123,7 @@ var stepGoal = info.stepGoal;   // Number (default 1500)
 var respirationRate = activityMonitorInfo.respirationRate;  // Number
 ```
 
-#### SpO2 ( Oxygen Saturation)
+#### SpO2 (Oxygen Saturation)
 
 ```monkeyc
 var currentOxygenSaturation = activityInfo.currentOxygenSaturation;  // Number (%)
@@ -135,32 +135,32 @@ var currentOxygenSaturation = activityInfo.currentOxygenSaturation;  // Number (
 var stats = System.getSystemStats();
 var battery = stats.battery;           // Float 0–100
 
-// batteryInDays — только на некоторых устройствах
+// batteryInDays — only on some devices
 var batteryInDays = 100;
 if (stats has :batteryInDays && stats.batteryInDays != null) {
     batteryInDays = stats.batteryInDays;
 }
 ```
 
-**Варианты отображения:**
+**Display variants:**
 
-- Проценты: `85%`
-- Дни: `12D` (если есть `batteryInDays`)
-- При зарядке: показывать проценты вместо дней
+- Percentage: `85%`
+- Days: `12D` (if `batteryInDays` available)
+- Charging: show percentage instead of days
 
 ### 5. Solar Intensity
 
 ```monkeyc
 var stats = System.getSystemStats();
-var solar = stats.solarIntensity;  // Number 0–100 или null!
+var solar = stats.solarIntensity;  // Number 0–100 or null!
 
-// ВСЕГДА проверяй на null
+// ALWAYS null-check before arithmetic
 if (solar != null) {
-    // рисовать solar bar
+    // draw solar bar
 }
 ```
 
-**Solar bar** — горизонтальная полоса внизу экрана:
+**Solar bar** — horizontal strip at bottom of screen:
 
 ```monkeyc
 var barMax = (screenWidth * 0.34).toNumber();  // ~60px
@@ -188,11 +188,11 @@ var dateStr = Lang.format("$1$ $2$ $3$", [
 ]);
 ```
 
-**Форматы:**
+**Formats:**
 
-- `MON 14` — день недели + день месяца (краткий)
-- `JAN 14` — месяц + день
-- `2024-01-14` — полная дата
+- `MON 14` — day of week + day of month (short)
+- `JAN 14` — month + day
+- `2024-01-14` — full date
 
 ### 7. Move Bar / Activity Minutes
 
@@ -206,15 +206,15 @@ var activeMinutesWeekGoal = info.activeMinutesWeekGoal;
 var activeMinutesDay = info.activeMinutesDay.total;
 ```
 
-**Визуализация:** три поля `████░░░░` или `+` значки.
+**Visualization:** blocks `████░░░░` or `+` marks.
 
 ### 8. Inset Circle (Solar Clock)
 
-ElegantAnalog использует inset circle для:
+ElegantAnalog uses inset circle for:
 
-- Sunrise/Sunset время
-- Dawn/Dusk маркеры
-- Second hand в миниатюрном виде
+- Sunrise/Sunset time
+- Dawn/Dusk markers
+- Second hand in miniature
 
 ```monkeyc
 var ss = WatchUi.getSubscreen();
@@ -225,7 +225,7 @@ var centerX_circle = ss.x + radius_circle;
 var centerY_circle = ss.y + radius_circle;
 ```
 
-### 9. Hash Marks (метки на циферблате)
+### 9. Hash Marks (clock dial markers)
 
 ```monkeyc
 for (var i = 0; i < 12; i += 1) {
@@ -234,7 +234,7 @@ for (var i = 0; i < 12; i += 1) {
 }
 ```
 
-### 10. Графики
+### 10. Charts
 
 #### Line Chart (HR, Breath)
 
@@ -282,36 +282,36 @@ function drawBarChart(dc, maxValue, values, chartX, chartY, barMaxHeight, barWid
 
 ---
 
-## Шрифты
+## Fonts
 
-| Константа         | Описание       | Доступность |
+| Constant           | Description      | Availability |
 | ----------------- | -------------- | ----------- |
-| `FONT_NUMBER_HOT` | Большие цифры  | Всегда      |
-| `FONT_LARGE`      | Средний        | Всегда      |
-| `FONT_MEDIUM`     | Средний-мелкий | Всегда      |
-| `FONT_SMALL`      | Мелкий         | Всегда      |
-| `FONT_TINY`       | Очень мелкий   | Всегда      |
+| `FONT_NUMBER_HOT` | Large digits   | Always      |
+| `FONT_LARGE`       | Medium         | Always      |
+| `FONT_MEDIUM`      | Medium-small   | Always      |
+| `FONT_SMALL`       | Small          | Always      |
+| `FONT_TINY`        | Very small     | Always      |
 
-**Кастомные шрифты:** Monkey C не поддерживает кастомные TTF в production. Используй системные шрифты и ASCII-совместимые символы.
+**Custom fonts:** Monkey C does not support custom TTF in production. Use system fonts and ASCII-compatible characters.
 
 ---
 
-## Цветовая палитра (MIP 2-color)
+## Color Palette (MIP 2-color)
 
-| Константа              | Фактический цвет | Notes       |
+| Constant                 | Actual color | Notes          |
 | ---------------------- | ---------------- | ----------- |
-| `Graphics.COLOR_WHITE` | Белый (светлый)  | Только этот |
-| `Graphics.COLOR_BLACK` | Чёрный (тёмный)  | Только этот |
+| `Graphics.COLOR_WHITE` | White (light)    | Use this     |
+| `Graphics.COLOR_BLACK` | Black (dark)    | Use this     |
 
-**Все остальные цвета** (`COLOR_RED`, `COLOR_GREEN`, etc.) **могут отображаться некорректно** — маппинг на WHITE или BLACK зависит от устройства. Не используй.
+**All other colors** (`COLOR_RED`, `COLOR_GREEN`, etc.) **may render incorrectly** — mapping to WHITE or BLACK depends on device. Do not use.
 
 ---
 
-## Оптимизация батареи
+## Battery Optimization
 
 ### onPartialUpdate()
 
-Вызывается каждую секунду вместо полного `onUpdate()`. Используй `dc.setClip()` для ограничения области перерисовки:
+Called every second instead of full `onUpdate()`. Use `dc.setClip()` to limit redraw area:
 
 ```monkeyc
 function onPartialUpdate(dc as Graphics.Dc) as Void {
@@ -335,13 +335,13 @@ _offscreenBuffer = Graphics.createBufferedBitmap({
 
 ### Second Hand
 
-- **Long hand** на главном циферблате: ~83px, потребляет больше battery
-- **Short hand** (в центре или inset circle): ~40px, экономит ~50%
-- **Disable** second hand: максимальная экономия
+- **Long hand** on main dial: uses more battery
+- **Short hand** (center or inset circle): uses less battery
+- **Disable** second hand: maximum battery saving
 
 ---
 
-## Layout Helper (формулы)
+## Layout Helper (formulas)
 
 ```monkeyc
 var width  = dc.getWidth();   // 176
@@ -350,7 +350,7 @@ var centerX = width / 2;      // 88
 var centerY = height / 2;      // 88
 var minScreen = width < height ? width : height;  // 176
 
-// Позиции зон
+// Zone positions
 var topRowY    = height * 0.05;   // ~9
 var centerY    = height * 0.45;   // ~79
 var middleY    = height * 0.60;    // ~106
@@ -361,7 +361,7 @@ var bottomY    = height * 0.85;   // ~150
 
 ## Data Sources
 
-| Data           | API                                                  | Permissions     |
+| Data            | API                                                  | Permissions     |
 | -------------- | ---------------------------------------------------- | --------------- |
 | Time           | `System.getClockTime()`                              | —               |
 | Battery        | `System.getSystemStats().battery`                    | —               |
