@@ -1,0 +1,18 @@
+# Build artifacts
+*.prg
+*.iq
+*.iq!
+
+# IDE
+.vscode/
+*.code-workspace
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
