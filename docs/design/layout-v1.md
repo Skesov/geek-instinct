@@ -2,7 +2,7 @@
 
 ## Screen Layout (176×176, MIP 2-color)
 
-```
+```text
 ┌─────────────────────┐
 │                     │
 │      12:34:56       │  ← Time center (FONT_NUMBER_HOT)
@@ -17,6 +17,7 @@
 ```
 
 **Note**: Icons (heart, sun, calendar) are not supported by system fonts. All labels use plain ASCII text:
+
 - `HR` — heart rate
 - `BAT` — battery
 - `STEPS` — step count
@@ -25,23 +26,25 @@
 
 ## Layout Grid
 
-| Zone | Y range | Content |
-|------|---------|---------|
-| Top | 0–60 | Time (hh:mm:ss) |
-| Middle-top | 60–100 | HR left, BAT right |
-| Middle | 100–140 | Steps (centered) |
-| Bottom | 140–176 | Solar left, date right |
+| Zone       | Y range | Content                |
+| ---------- | ------- | ---------------------- |
+| Top        | 0–60    | Time (hh:mm:ss)        |
+| Middle-top | 60–100  | HR left, BAT right     |
+| Middle     | 100–140 | Steps (centered)       |
+| Bottom     | 140–176 | Solar left, date right |
 
 Coordinates computed via `LayoutHelper` — no hardcoded pixels.
 
 ## View Variants
 
 ### MinimalView
+
 - Time (hh:mm)
 - Date (weekday + day)
 - Battery %
 
 ### StandardView
+
 - Time + seconds
 - Heart rate (HR)
 - Steps
@@ -49,6 +52,7 @@ Coordinates computed via `LayoutHelper` — no hardcoded pixels.
 - Body battery (optional, via SensorHistory)
 
 ### SolarView
+
 - Everything in StandardView
 - Solar intensity bar
 - Analog clock hands (hour + minute)
@@ -56,9 +60,9 @@ Coordinates computed via `LayoutHelper` — no hardcoded pixels.
 
 ## Color Usage (MIP 2-color)
 
-| Purpose | Color |
-|---------|-------|
-| Background | `COLOR_BLACK` |
+| Purpose            | Color         |
+| ------------------ | ------------- |
+| Background         | `COLOR_BLACK` |
 | Primary text/lines | `COLOR_WHITE` |
 
 Only `COLOR_WHITE` and `COLOR_BLACK` render correctly on Instinct 2 Solar (MIP 2-color).
