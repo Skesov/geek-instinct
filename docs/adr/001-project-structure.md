@@ -2,50 +2,48 @@
 
 ## Status
 
-Accepted
+Accepted (supersedes previous version — 2026-05-05)
 
 ## Context
 
-We need to develop multiple watch face variants for Garmin Instinct 2 Solar with shared code and a clear growth path. The team is a single developer working locally.
+We develop a single custom watch face for Garmin Instinct 2 Solar (`instinct2`). The previous ADR described a multi-variant approach (MinimalView, StandardView, SolarView) — this was rejected in favour of a single data-rich watch face replicating an existing design (workbench/scratch/current.txt).
+
+The watch face is a single screen — no pages, no gesture switching, no multiple view variants.
 
 ## Decision
 
-Mono-repository with one `manifest.xml`, one `DataSource`, and multiple View classes.
+**Single watch face with one View class.** Flat structure with utility modules.
 
 ```
 source/
-├── App.mc                    # entry point — returns the selected View
-├── DataSource.mc            # all Toybox.* calls — single integration point
-├── Views/
-│   ├── BaseWatchFaceView.mc # shared: layout, draw helpers, view lifecycle
-│   ├── MinimalView.mc       # P0: time + date + battery
-│   ├── StandardView.mc      # P1: + HR + steps
-│   └── SolarView.mc         # P2: + solar + analog hands
-└── Utils/
-    ├── LayoutHelper.mc      # coordinate formulas, no hardcoded pixels
-    └── Colors.mc             # COLOR_WHITE / COLOR_BLACK constants
+├── App.mc                    # entry point — returns the watch face view
+├── View.mc                   # watch face lifecycle, data reading, drawing
+├── Layout.mc                 # coordinate formulas, zone definitions
+└── Config.mc                 # constants (thresholds, colors, fonts)
 ```
 
-- `DataSource` owns all Toybox.* imports — no other file calls hardware APIs.
-- `BaseWatchFaceView` provides layout grid, draw primitives, and the `onUpdate()` lifecycle.
-- View variants inherit from `BaseWatchFaceView` and override only `drawContent()` to add or change data fields.
-- `LayoutHelper` uses `dc.getWidth()` / `dc.getHeight()` — no hardcoded coordinates.
+- `App.mc` — one-line entry point.
+- `View.mc` — extends `WatchUi.WatchFace`. Reads sensors directly, draws all zones.
+- `Layout.mc` — pure coordinate functions. Input: dc dimensions. Output: zone rectangles. No Toybox imports.
+- `Config.mc` — compile-time constants: `.moonPhaseBaseDate`, `.caloriesPerBeer`, etc.
+
+No `BaseWatchFaceView`, no `DataSource` abstraction, no view inheritance tree. For a single watch face, a flat structure is simpler and avoids premature abstraction.
 
 ## Consequences
 
 ### Pros
-- All variants share one codebase and one build artifact.
-- Adding a new variant = copy a View class → override `drawContent()`.
-- All device-specific logic flows through `DataSource` — one place to change.
+- One file handles everything — easy to trace data flow.
+- No indirection layers. Sensor reads happen where they're rendered.
+- Adding a new data field = add one draw function in View.mc, update Layout.mc.
 
 ### Cons
-- Each watchface variant is a separate `.prg` entry point in `manifest.xml`. The user picks one via the Garmin watch face picker — not by switching inside a running app.
-- Shared base class adds indirection — for a single variant, simpler to have one flat file.
+- View.mc may grow large (~400–500 lines). Mitigated by extracting coordinate logic to Layout.mc and constants to Config.mc.
+- If a second watch face variant is needed later, refactoring will be required. KISS: we have one watch face today.
 
 ## Rationale
 
-> "Start Simple" — we are one developer. The indirection cost is acceptable because we will have 3+ variants and want DRY reuse of the data-access layer.
+> "Start Simple." We are one developer with one watch face design. A multi-variant architecture solves a problem we don't have.
 
 ## Reversal Condition
 
-If we need independent deployment cadences or per-variant release channels, split into separate `manifest.xml` projects.
+If we need multiple watch face variants with independent feature sets, extract a base class from View.mc and reintroduce the inheritance hierarchy from the original ADR-001.

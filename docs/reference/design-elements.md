@@ -129,6 +129,67 @@ var respirationRate = activityMonitorInfo.respirationRate;  // Number
 var currentOxygenSaturation = activityInfo.currentOxygenSaturation;  // Number (%)
 ```
 
+Note: `Activity.getActivityInfo()` requires `Activity` permission. Prefer `ActivityMonitor.getInfo()` for HR when we already have that permission for steps.
+
+#### Distance
+
+```monkeyc
+var info = ActivityMonitor.getInfo();
+var distance = info.distance;  // Number (cm), null if no GPS fix
+var distanceKm = (distance != null) ? (distance / 100000.0) : 0.0;
+var distStr = Lang.format("$1$km", [distanceKm.format("%.1f")]);
+```
+
+#### Altitude
+
+```monkeyc
+// Requires Sensor permission in manifest.xml
+using Toybox.Sensor;
+
+var sensorInfo = Sensor.getInfo();
+var altitude = sensorInfo.altitude;  // Number (m), null if no barometer data
+var altStr = (altitude != null) ? Lang.format("$1$m", [altitude]) : "--m";
+```
+
+#### Ambient Pressure
+
+```monkeyc
+// Requires Sensor permission in manifest.xml
+using Toybox.Sensor;
+
+var sensorInfo = Sensor.getInfo();
+var pressure = sensorInfo.pressure;  // Number (Pa), null if no sensor
+// Convert Pa → hPa
+var pressureHpa = (pressure != null) ? (pressure / 100.0).toNumber() : 0;
+var pressureStr = Lang.format("$1$", [pressureHpa]);
+```
+
+**Trend arrow:** Compare current vs previous reading. If no previous reading available, show no arrow.
+
+| Condition | Arrow |
+|-----------|-------|
+| Rising (> 1 hPa) | ↑ |
+| Falling (< -1 hPa) | ↓ |
+| Stable | → |
+
+#### Active Calories
+
+```monkeyc
+var info = ActivityMonitor.getInfo();
+var calories = info.calories;  // Number (kcal), null if no data
+var calStr = (calories != null) ? calories.toString() : "--";
+```
+
+#### Beers Earned
+
+```monkeyc
+const CALORIES_PER_BEER = 150;  // ~150 kcal per beer
+var info = ActivityMonitor.getInfo();
+var calories = (info.calories != null) ? info.calories : 0;
+var beers = calories / CALORIES_PER_BEER.toFloat();
+var beerStr = Lang.format("$1$", [beers.format("%.1f")]);
+```
+
 ### 4. Battery
 
 ```monkeyc
@@ -208,24 +269,93 @@ var activeMinutesDay = info.activeMinutesDay.total;
 
 **Visualization:** blocks `████░░░░` or `+` marks.
 
-### 8. Inset Circle (Solar Clock)
+### 8. Subscreen HR + Battery Ring
 
-ElegantAnalog uses inset circle for:
-
-- Sunrise/Sunset time
-- Dawn/Dusk markers
-- Second hand in miniature
+Instinct 2 Solar has a physical circular cutout (subscreen) at top-right (62×62 px). Display HR in it with a circular battery progress ring.
 
 ```monkeyc
-var ss = WatchUi.getSubscreen();
-// ss.x, ss.y, ss.width, ss.height
+var subscreen = WatchUi.getSubscreen();
+// subscreen.x, subscreen.y, subscreen.width, subscreen.height
 
-var radius_circle = ss.height / 2 + 1;
-var centerX_circle = ss.x + radius_circle;
-var centerY_circle = ss.y + radius_circle;
+var centerX = subscreen.x + subscreen.width / 2;
+var centerY = subscreen.y + subscreen.height / 2;
+var radius  = subscreen.width / 2 - 2;  // 2px padding
+
+var info = ActivityMonitor.getInfo();
+var hr = (info.heartRate != null) ? info.heartRate : 0;
+var battery = System.getSystemStats().battery;  // 0–100
 ```
 
-### 9. Hash Marks (clock dial markers)
+**HR display:** Large digits centered in subscreen (`FONT_NUMBER_MEDIUM`). If HR is null, show `--`.
+
+**Circular battery ring:**
+
+```monkeyc
+dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
+dc.setPenWidth(3);
+
+// Background ring (full circle)
+dc.drawCircle(centerX, centerY, radius);
+
+// Progress arc
+var angle = (battery / 100.0) * 360;  // degrees
+// Draw arc from -90° (12 o'clock) clockwise
+dc.drawArc(centerX, centerY, radius,
+           Graphics.ARC_CLOCKWISE, 90, 90 + angle.toNumber());
+```
+
+Arc start at 90° = 12 o'clock position (Garmin coordinate system).
+
+### 9. Sunline Divider + Moon Phase
+
+Horizontal divider line below time with moon phase icon at center.
+
+```monkeyc
+var lineY = (dc.getHeight() * 0.72).toNumber();  // ~127
+dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_BLACK);
+dc.setPenWidth(1);
+
+// Left half
+dc.drawLine(0, lineY, dc.getWidth() / 2 - 8, lineY);
+// Right half
+dc.drawLine(dc.getWidth() / 2 + 8, lineY, dc.getWidth(), lineY);
+
+// Moon phase at center
+var moonIcon = getMoonPhaseIcon(clockTime);  // returns drawable or char
+```
+
+**Moon phase calculation:**
+
+```monkeyc
+// Known new moon: Jan 29, 2025 (MJD 60676)
+// Lunar cycle: 29.53 days
+const NEW_MOON_MJD = 60676;
+const LUNAR_CYCLE  = 29.53;
+
+function getMoonPhase(now as Time.Moment) as Number {
+    var mjd = Time.Gregorian.utcInfo(now, Time.FORMAT_SHORT).dayOfYear
+              + (Time.Gregorian.utcInfo(now, Time.FORMAT_SHORT).year - 2000) * 365;
+    var elapsed = now.value() - Gregorian.moment({:year=>2025, :month=>1, :day=>29}).value();
+    var dayFraction = elapsed.toFloat() / 86400.0;  // seconds → days
+    var phase = (dayFraction % LUNAR_CYCLE) / LUNAR_CYCLE;  // 0..1
+    return phase;
+}
+```
+
+**Moon phase icons:** Text-based fallbacks until PNG drawables exist:
+
+| Phase range | Label | Unicode fallback |
+|------------|-------|-----------------|
+| 0.00–0.03, 0.97–1.00 | New Moon | `N` |
+| 0.03–0.22 | Waxing Crescent | `(` |
+| 0.22–0.28 | First Quarter | `D` |
+| 0.28–0.47 | Waxing Gibbous | `G` |
+| 0.47–0.53 | Full Moon | `O` |
+| 0.53–0.72 | Waning Gibbous | `G` |
+| 0.72–0.78 | Last Quarter | `D` |
+| 0.78–0.97 | Waning Crescent | `)` |
+
+### 10. Hash Marks (clock dial markers)
 
 ```monkeyc
 for (var i = 0; i < 12; i += 1) {
@@ -234,7 +364,7 @@ for (var i = 0; i < 12; i += 1) {
 }
 ```
 
-### 10. Charts
+### 11. Charts
 
 #### Line Chart (HR, Breath)
 
@@ -282,7 +412,7 @@ function drawBarChart(dc, maxValue, values, chartX, chartY, barMaxHeight, barWid
 
 ---
 
-## Fonts
+## Fonts (12)
 
 | Constant           | Description      | Availability |
 | ----------------- | -------------- | ----------- |
@@ -343,18 +473,51 @@ _offscreenBuffer = Graphics.createBufferedBitmap({
 
 ## Layout Helper (formulas)
 
-```monkeyc
-var width  = dc.getWidth();   // 176
-var height = dc.getHeight();  // 176
-var centerX = width / 2;      // 88
-var centerY = height / 2;      // 88
-var minScreen = width < height ? width : height;  // 176
+Base dimensions:
 
-// Zone positions
-var topRowY    = height * 0.05;   // ~9
-var centerY    = height * 0.45;   // ~79
-var middleY    = height * 0.60;    // ~106
-var bottomY    = height * 0.85;   // ~150
+```monkeyc
+var dcWidth  = dc.getWidth();   // 176
+var dcHeight = dc.getHeight();  // 176
+```
+
+Subscreen-aware zones for current.txt layout:
+
+```monkeyc
+var ss = WatchUi.getSubscreen();
+// ss.x, ss.y, ss.width, ss.height — subscreen at top-right
+
+// Time center — shifted left to avoid subscreen
+var timeCenterX = (dcWidth - ss.width) / 2;     // ~57
+var timeCenterY = dcHeight * 0.55;               // ~97
+
+// Date box — top-left corner
+var dateBoxX = 4;
+var dateBoxY = 4;
+var dateBoxW = 48;
+var dateBoxH = 32;
+
+// Left data panel — fills area left of subscreen
+var leftPanelX = 4;
+var leftPanelY = ss.y + ss.height + 4;           // ~70
+var leftPanelW = ss.x - 8;                       // ~106
+
+// Sunline divider
+var sunlineY    = dcHeight * 0.72;               // ~127
+var moonPhaseX  = dcWidth / 2;
+var moonPhaseY  = sunlineY;
+
+// Bottom section
+var bottomY      = sunlineY + 10;                 // ~137
+var pressureX    = dcWidth * 0.25;                // ~44
+var caloriesX    = dcWidth * 0.75;                // ~132
+
+// Footer (beers earned)
+var footerY = dcHeight - 12;                      // ~164
+
+// Data labels and values — left panel spacing
+var labelFont   = Graphics.FONT_XTINY;
+var valueFont   = Graphics.FONT_TINY;
+var rowHeight   = 16; // vertical spacing between data rows
 ```
 
 ---
@@ -365,15 +528,25 @@ var bottomY    = height * 0.85;   // ~150
 | -------------- | ---------------------------------------------------- | --------------- |
 | Time           | `System.getClockTime()`                              | —               |
 | Battery        | `System.getSystemStats().battery`                    | —               |
+| Battery days   | `System.getSystemStats().batteryInDays`              | —               |
 | Solar          | `System.getSystemStats().solarIntensity`             | —               |
 | Steps          | `ActivityMonitor.getInfo().steps`                    | ActivityMonitor |
-| HR             | `ActivityMonitor.getInfo().heartRate`                | ActivityMonitor |
+| Step Goal      | `ActivityMonitor.getInfo().stepGoal`                 | ActivityMonitor |
+| Distance       | `ActivityMonitor.getInfo().distance` (cm)            | ActivityMonitor |
+| Altitude       | `Sensor.getInfo().altitude` (m)                        | Sensor         |
+| HR             | `ActivityMonitor.getInfo().heartRate` (bpm)          | ActivityMonitor |
 | HR History     | `ActivityMonitor.getHeartRateHistory()`              | ActivityMonitor |
 | Respiration    | `ActivityMonitor.getInfo().respirationRate`          | ActivityMonitor |
 | SpO2           | `Activity.getActivityInfo().currentOxygenSaturation` | Activity        |
+| Calories       | `ActivityMonitor.getInfo().calories` (kcal)          | ActivityMonitor |
+| Pressure       | `Sensor.getInfo().pressure` (Pa)                     | Sensor         |
 | Move Bar       | `ActivityMonitor.getInfo().moveBarLevel`             | ActivityMonitor |
 | Active Minutes | `ActivityMonitor.getInfo().activeMinutesWeek`        | ActivityMonitor |
 | Body Battery   | `SensorHistory.getBodyBatteryHistory()`              | SensorHistory   |
 | Stress         | `SensorHistory.getStressHistory()`                   | SensorHistory   |
+| BT Connected   | `System.getDeviceSettings().phoneConnected`          | Communications  |
+| Notifications  | `System.getDeviceSettings().notificationCount`       | Communications  |
+| Moon Phase     | Calculated from date                                 | —               |
+| Subscreen      | `WatchUi.getSubscreen()`                             | —               |
 | Weather        | `Weather.getCurrentConditions()`                     | Weather         |
 | Date           | `Time.Gregorian.info()`                              | —               |

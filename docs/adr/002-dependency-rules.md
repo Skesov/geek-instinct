@@ -1,43 +1,63 @@
-# ADR 002: Toybox Isolation Rule
+# ADR 002: Data Access Pattern
 
 ## Status
 
-Accepted
+Accepted (supersedes previous version — 2026-05-05)
 
 ## Context
 
-All device I/O in Connect IQ lives in `Toybox.*` namespaces. Without a rule, Toybox calls spread across every file — making the code tied to hardware and harder to reason about.
+The previous ADR proposed strict Toybox isolation: only `DataSource.mc` imports Toybox, all other files are "pure logic". This rule is incompatible with Monkey C reality:
+
+- **Views MUST import `Toybox.WatchUi`** — `WatchUi.WatchFace` is the base class, `Graphics.Dc` is the draw context. There is no way to render pixels without touching Toybox.
+- **Monkey C has no interfaces** — "abstraction" is naming convention only. A `DataSource` class adds indirection without compile-time guarantees.
+- **Watch faces are data collection + rendering** — there is no domain layer to protect. Separating data reads from rendering just adds call overhead in a resource-constrained runtime.
+
+The strict isolation rule was written by an LLM unfamiliar with Monkey C constraints. It is rescinded.
 
 ## Decision
 
-**One file imports Toybox; all other source files are pure business logic.**
+**Views import Toybox namespaces directly. No artificial abstraction layer.**
 
-```
-Toybox.* APIs ──► DataSource.mc ──► (all other source files)
-                          ▲
-                          │
-               only place that calls Toybox
+```monkeyc
+using Toybox.WatchUi;
+using Toybox.Graphics;
+using Toybox.System;
+using Toybox.ActivityMonitor;
+using Toybox.Time;
+using Toybox.Time.Gregorian;
+
+class MyView extends WatchUi.WatchFace {
+    function onUpdate(dc as Graphics.Dc) as Void {
+        // Read directly, no intermediary
+        var clock = System.getClockTime();
+        var info  = ActivityMonitor.getInfo();
+        // ... draw ...
+    }
+}
 ```
 
-- `DataSource.mc` imports all `Toybox.*` namespaces and exposes data via plain methods.
-- `Views/`, `Utils/`, `App.mc` — no Toybox imports, no hardware calls.
-- If Toybox API changes, only `DataSource.mc` needs updating.
+Rules that remain:
+
+- **One read per sensor per frame.** If two draw functions need steps, read `ActivityMonitor.getInfo()` once into a local var, not twice.
+- **No Toybox calls in `Layout.mc` or `Config.mc`.** These utility modules are pure coordinate/constant files — keep them import-free.
+- **Class-level vars for mutable cache.** Allocate `mClock`, `mInfo`, `mStats` as class fields, not locals — avoids GC pressure from repeated allocation in `onUpdate()`.
 
 ## Consequences
 
 ### Pros
-- `DataSource` methods are callable on the simulator without a view.
-- Swapping a data source (e.g., for a mock) requires changing one file.
-- Clear ownership: all hardware coupling lives in `DataSource`.
+- Code matches Monkey C reality. No fighting the framework.
+- Data flow is visible: `onUpdate()` → read → draw. One file to trace.
+- Fewer files, fewer imports, simpler compile graph.
 
 ### Cons
-- Extra indirection — for a single-view watch face, direct Toybox calls in the View may be simpler.
-- Monkey C has no interface keyword — "interfaces" are conventions (method names only).
+- `View.mc` will be the only file importing Toybox — it will have 6–8 `using` statements. Acceptable for a single-file watch face.
+- If we later need unit tests, mocking Toybox is impossible anyway (Monkey C has no DI). Testing remains device-only.
 
-## Clarification
+## Rationale
 
-This is not "Dependencies Inward" from Clean Architecture. Watch faces have no domain layer — only data collection and rendering. The rule is simply **Toybox isolation**, not a layered architecture.
+> "Don't abstract what you can't change." Monkey C provides no mechanism to swap Toybox implementations. An abstraction layer over Toybox is indirection without benefit.
 
 ## References
 
-Toybox API docs: `references/api_reference.md`
+- Connect IQ API docs: Toybox namespaces are the SDK — there is no "layer below" them.
+- Garmin sample watch faces: all draw data directly in `onUpdate()` with no abstraction.

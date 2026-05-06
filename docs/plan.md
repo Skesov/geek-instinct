@@ -2,101 +2,83 @@
 
 ## Overview
 
-Development of custom watch faces for Garmin Instinct 2 / Instinct 2 Solar via Connect IQ SDK and open-source reference implementations.
+Single custom watch face for Garmin Instinct 2 Solar. Data-rich layout replicating the design from `workbench/scratch/current.txt` (ID 96317).
 
 ## Target Device
 
 | Parameter | Value |
 |-----------|-------|
 | Device | Instinct 2 Solar |
-| Product ID | `instinct2s_solar` |
+| Product ID | `instinct2` |
 | Resolution | 176 × 176 px |
 | Display | MIP 2-color (B&W only) |
 | API Level | 3.4.0 |
 
----
+## Architecture
+
+See `docs/adr/001-project-structure.md` for details.
+
+```
+source/
+├── App.mc           # Entry point
+├── View.mc           # Watch face — all drawing and data access
+├── Layout.mc         # Coordinate formulas
+└── Config.mc         # Constants
+```
+
+## Feature Set (from current.txt)
+
+| # | Feature | Data Source | Zone |
+|---|---------|-------------|------|
+| 1 | Time HH:MM (leading zero) | `System.getClockTime()` | Center |
+| 2 | Date (e.g., Tue 05) with border | `Gregorian.info()` | Top-left |
+| 3 | Steps with count | `ActivityMonitor.getInfo().steps` | Top-left |
+| 4 | Distance (km) | `ActivityMonitor.getInfo().distance` (cm → km) | Left panel |
+| 5 | Altitude (m) | `Sensor.getInfo().altitude` (requires `Sensor` perm) | Left panel |
+| 6 | Battery % + days remaining | `System.getSystemStats()` | Left panel |
+| 7 | Bluetooth + notification icons | `System.getDeviceSettings()` | Left panel |
+| 8 | Heart Rate in subscreen | `ActivityMonitor.getInfo().heartRate` | Top-right cutout (62×62) |
+| 9 | Circular battery ring around HR | `System.getSystemStats().battery` | Top-right cutout |
+| 10 | Sunline divider + moon phase | Calculated from date | Below time |
+| 11 | Ambient pressure (hPa) + trend | `Sensor.getInfo().pressure` (Pa → hPa) | Bottom-left |
+| 12 | Active calories + icon | `ActivityMonitor.getInfo().calories` | Bottom-right |
+| 13 | Beers earned | `calories / 150` | Footer |
 
 ## Phases
 
-### Phase 1: Reference & Study
+### Phase 1: Project Setup & "Hello Watch"
 
-| # | Task | Details | Status |
-|---|------|---------|--------|
-| 1.1 | Study open-source watchfaces | Analyze geektime, ElegantAnalog for patterns | pending |
-| 1.2 | Identify feature set | Define what our watchface will display | pending |
-| 1.3 | Design layout | Create layout sketch for 176×176 display | pending |
+| # | Task | Status |
+|---|------|--------|
+| 1.1 | Create `manifest.xml` with permissions | pending |
+| 1.2 | Create `monkey.jungle` | pending |
+| 1.3 | Create `App.mc` entry point | pending |
+| 1.4 | Create `View.mc` — time + date only | pending |
+| 1.5 | Build and run on simulator | pending |
 
----
+### Phase 2: Full Data Implementation
 
-### Phase 2: Base Project Setup
+| # | Task | Status |
+|---|------|--------|
+| 2.1 | Implement subscreen HR + battery ring | pending |
+| 2.2 | Implement date box + steps | pending |
+| 2.3 | Implement left panel (dist, alt, batt, BT) | pending |
+| 2.4 | Implement sunline + moon phase | pending |
+| 2.5 | Implement bottom section (pressure, calories) | pending |
+| 2.6 | Implement beers earned | pending |
 
-| # | Task | Details | Status |
-|---|------|---------|--------|
-| 2.1 | Install Connect IQ SDK | SDK Manager + VS Code Monkey C extension | pending |
-| 2.2 | Create monorepo structure | As defined in `docs/adr/001-project-structure.md` | pending |
-| 2.3 | Verify build pipeline | "Hello Watch" — time + date only | pending |
-| 2.4 | Run on simulator | Target `instinct2s_solar` | pending |
+### Phase 3: Polish
 
----
-
-### Phase 3: Feature Implementation
-
-Priority | Feature | Data Source | Status |
-----------|---------|-------------|--------|
-| P0 | Time (hh:mm:ss) | `System.getClockTime()` | pending |
-| P0 | Date | `System.getClockTime()` | pending |
-| P0 | Battery % | `System.getSystemStats().battery` | pending |
-| P1 | Heart Rate (HR) | `ActivityMonitor.getInfo().heartRate` | pending |
-| P1 | Steps | `ActivityMonitor.getInfo().steps` | pending |
-| P1 | Solar intensity | `System.getSystemStats().solarIntensity` | pending |
-| P2 | Analog hands | `Graphics.drawLine()` | pending |
-| P2 | Indicator icons | `drawable/*.png` | pending |
-| P3 | Body Battery | `SensorHistory.getBodyBatteryHistory()` | pending |
-| P3 | Stress level | `SensorHistory.getStressHistory()` | pending |
-
----
-
-### Phase 4: Polish
-
-- `onPartialUpdate()` optimization for battery saving
+- `onPartialUpdate()` for seconds
+- Icons (heart, footprint, flame, beer, moon phase)
 - Real device testing
-- Final `.prg` / `.iq` export
+- Final `.iq` export
 
----
+## Permissions Required
 
-## Project Structure
-
+```xml
+<iq:uses-permission id="ActivityMonitor"/>
+<iq:uses-permission id="UserProfile"/>
+<iq:uses-permission id="Communications"/>
+<iq:uses-permission id="Sensor"/>
 ```
-geek-instinct/
-├── manifest.xml
-├── monkey.jungle
-├── source/
-│   ├── App.mc
-│   ├── Views/
-│   │   ├── BaseWatchFaceView.mc
-│   │   ├── MinimalView.mc
-│   │   ├── StandardView.mc
-│   │   └── SolarView.mc
-│   └── Utils/
-│       ├── DataSource.mc
-│       ├── LayoutHelper.mc
-│       └── Colors.mc
-├── resources/
-│   ├── drawables/
-│   └── layouts/
-└── docs/
-    ├── adr/
-    ├── reference/
-    └── design/
-```
-
----
-
-## Key Technical Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| Mono-repo | Shared base class, multiple watchface variants |
-| BaseWatchFaceView | Centralized layout + data logic — DRY |
-| MIP 2-color only | Instinct 2 Solar supports `COLOR_WHITE` / `COLOR_BLACK` only |
-| API Level 3.4 | Minimum for Instinct 2 Solar compatibility |

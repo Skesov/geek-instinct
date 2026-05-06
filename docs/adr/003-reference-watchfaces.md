@@ -1,33 +1,52 @@
-# ADR 003: Reference Watchface Selection
+# ADR 003: Reference Watchfaces
 
 ## Status
 
-Accepted
+Accepted (updated 2026-05-05)
 
 ## Context
 
-We need open-source implementation references to build our watchface from scratch.
+We need open-source implementation references to build our watchface.
 
 ## Decision
 
-Use two reference watchfaces:
+Use three references — one primary design target, two implementation pattern sources.
 
-| Reference | Purpose | Why |
-|-----------|---------|-----|
-| **geektime** (rishubil/geektime) | Data-heavy layout | Targets `instinct2` directly; shows HR, steps, breath, SpO2, battery-as-days |
-| **ElegantAnalog-Watchface** (bhugh/) | Analog hands + solar | Shows working analog hands, solar clock, inset circle patterns |
+### Primary Design Target
+
+| Reference | Purpose |
+|-----------|---------|
+| **current.txt watch face** (ID 96317) | Full layout specification. Data-rich single screen: subscreen HR, time center, activity stats, sunline divider, moon phase, pressure, calories, beers earned. |
+
+This is the watch face currently installed on the developer's device. It serves as the exact layout specification — we aim to replicate it approximately (not pixel-perfect).
+
+### Implementation Pattern Sources
+
+| Reference | URL | Purpose |
+|-----------|-----|---------|
+| **geektime** | github.com/rishubil/geektime | Data-heavy layout, battery-as-days, step formatting, UTC offset. Targets `instinct2` directly. |
+| **ElegantAnalog** | github.com/bhugh/ElegantAnalog-Watchface | Subscreen handling (`WatchUi.getSubscreen()`), analog hands, circular progress bars, solar clock. |
+
+### Patterns taken from each
+
+| Pattern | Source | Used for |
+|---------|--------|----------|
+| `WatchUi.getSubscreen()` | ElegantAnalog | Positioning HR in top-right circular cutout |
+| Circular progress bar | ElegantAnalog | Battery ring around HR |
+| Battery in days | geektime | `batteryInDays` with fallback |
+| Step count formatting | geektime | Compact representation (5.4K) |
 
 ## Consequences
 
 ### Pros
-- Both repos target Instinct 2 / 176×176 — screen dimensions match exactly.
-- geektime shows a full data-heavy layout we can adapt for our StandardView/SolarView.
-- ElegantAnalog shows the analog hand drawing math we need for SolarView.
+- Primary target is a known-good design (used daily by the developer).
+- Reference repos cover the technical unknowns: subscreen layout, circular drawing.
+- All three target Instinct 2 / 176×176.
 
 ### Cons
-- Both repos are without explicit license — treat as study reference only.
-- SmartArcs is GPL-3.0 — copyleft license limits reuse; excluded as primary reference.
+- current.txt is a textual description only, not source code — layout interpretation requires experimentation.
+- geektime and ElegantAnalog are without explicit license — study reference only.
 
 ## Reversal Condition
 
-If neither reference is sufficient once we start implementation, search for additional repos targeting `instinct2s_solar` specifically.
+If subscreen coordinates or circular drawing cannot be replicated from ElegantAnalog, search for additional `instinct2` repos with subscreen usage.
